@@ -75,3 +75,35 @@ func (c *UsersController) handleGetUsers(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, publicUsers)
 }
+
+func (c *UsersController) handleLogin(ctx *gin.Context) {
+	var payload models.UserPayload
+	if err := ctx.BindJSON(&payload); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	var user models.User
+	// Find the user by email
+	result := c.db.Where("email = ?", payload.Email).First(&user)
+	if result.Error != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// Compare the provided password with the stored hash
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// Generate the JWT
+	tokenString, err := GenerateJWT(user.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"token": tokenString})
+}

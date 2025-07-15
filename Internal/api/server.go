@@ -37,6 +37,8 @@ func (s *Server) routes() {
 	api := s.router.Group("/api")
 	{
 		api.POST("/register", usersController.handleRegisterUser)
-		api.GET("/users", usersController.handleGetUsers)
+		api.POST("/login", usersController.handleLogin)
+		api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
+
 	}
 }
