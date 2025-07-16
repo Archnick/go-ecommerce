@@ -19,8 +19,23 @@ type Claims struct {
 }
 
 // GenerateJWT creates a new JWT for a given user ID.
-func GenerateJWT(userID uint) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+// Rename GenerateJWT to GenerateAccessToken and shorten expiry
+func GenerateAccessToken(userID uint) (string, error) {
+	expirationTime := time.Now().Add(15 * time.Minute) // Short expiry
+	claims := &Claims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(jwtKey)
+}
+
+// Add a new function for generating refresh tokens
+func GenerateRefreshToken(userID uint) (string, error) {
+	expirationTime := time.Now().Add(7 * 24 * time.Hour) // Long expiry
 	claims := &Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{

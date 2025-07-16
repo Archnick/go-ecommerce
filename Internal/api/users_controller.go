@@ -6,6 +6,7 @@ import (
 
 	"github.com/Archnick/go-ecommerce/Internal/models"
 	"github.com/gin-gonic/gin" // Import Gin
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -99,11 +100,75 @@ func (c *UsersController) handleLogin(ctx *gin.Context) {
 	}
 
 	// Generate the JWT
-	tokenString, err := GenerateJWT(user.ID)
+	tokenString, err := GenerateAccessToken(user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate access token"})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"token": tokenString})
+	refreshToken, err := GenerateRefreshToken(user.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate refresh token"})
+		return
+	}
+
+	hashedRefreshToken, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process token"})
+		return
+	}
+
+	expiry := time.Now().Add(7 * 24 * time.Hour)
+	c.db.Model(&user).Updates(models.User{
+		RefreshToken:          string(hashedRefreshToken),
+		RefreshTokenExpiresAt: expiry,
+	})
+
+	ctx.JSON(http.StatusOK, gin.H{"access_token": tokenString, "refresh_token": refreshToken})
+}
+
+func (c *UsersController) handleRefreshToken(ctx *gin.Context) {
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	if err := ctx.BindJSON(&body); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// 1. Parse the incoming refresh token to get the claims
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(body.RefreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtKey, nil
+	})
+
+	if err != nil || !token.Valid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid refresh token"})
+		return
+	}
+
+	// 2. Fetch the specific user from the database using the ID from the token claims
+	var user models.User
+	result := c.db.First(&user, claims.UserID)
+	if result.Error != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+		return
+	}
+
+	// 3. Compare the stored refresh token hash with the incoming one
+	err = bcrypt.CompareHashAndPassword([]byte(user.RefreshToken), []byte(body.RefreshToken))
+	if err != nil || time.Now().After(user.RefreshTokenExpiresAt) {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired refresh token"})
+		return
+	}
+
+	// 4. Generate a new access token
+	newAccessToken, err := GenerateAccessToken(user.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate new token"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"access_token": newAccessToken})
 }

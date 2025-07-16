@@ -38,6 +38,8 @@ func (s *Server) routes() {
 	{
 		api.POST("/register", usersController.handleRegisterUser)
 		api.POST("/login", usersController.handleLogin)
+		api.POST("/refresh", usersController.handleRefreshToken)
+
 		api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
 
 	}
