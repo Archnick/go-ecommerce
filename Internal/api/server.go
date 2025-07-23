@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Archnick/go-ecommerce/Internal/models"
 	"github.com/gin-gonic/gin" // Import Gin
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/locales/en"
@@ -68,8 +69,9 @@ func (s *Server) routes() {
 		api.POST("/login", authController.handleLogin)
 		api.POST("/refresh", authController.handleRefreshToken)
 
-		api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
 		api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
+		api.GET("/logout", AuthMiddleware(), usersController.handleLogout)
 
+		api.GET("/users", AuthMiddleware(), RoleMiddleware(models.AdminRole), usersController.handleGetUsers)
 	}
 }

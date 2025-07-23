@@ -12,6 +12,7 @@ type User struct {
 	gorm.Model
 	Email                 string `gorm:"unique"`
 	Password              string
+	Role                  string `gorm:"type:varchar(20);default:'customer'"`
 	RefreshToken          string
 	RefreshTokenExpiresAt time.Time
 }

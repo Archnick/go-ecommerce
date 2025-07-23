@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Archnick/go-ecommerce/Internal/models"
@@ -51,8 +52,25 @@ func (c *UsersController) handleGetUsers(ctx *gin.Context) {
 }
 
 func (c *UsersController) handleGetUser(ctx *gin.Context) {
-	var user models.User
+	// get users id
+	requestingUserID, _ := ctx.Get("userID")
+	requestingUserRole, _ := ctx.Get("role")
+
+	targetUserIDStr := ctx.Param("id")
+	targetUserID, err := strconv.Atoi(targetUserIDStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	if models.Role(requestingUserRole.(string)) != models.AdminRole && requestingUserID.(uint) != uint(targetUserID) {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to view this user"})
+		return
+	}
+
 	id := ctx.Param("id")
+
+	var user models.User
 	result := c.db.First(&user, id)
 
 	if result.Error != nil {
