@@ -68,7 +68,7 @@ func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
 	api.POST("/register", authController.handleRegisterUser)
 	api.POST("/login", authController.handleLogin)
 	api.POST("/refresh", authController.handleRefreshToken)
-	api.GET("/logout", AuthMiddleware(), authController.handleLogout)
+	api.POST("/logout", AuthMiddleware(), authController.handleLogout)
 }
 
 func (s *Server) getUserRoutes(api *gin.RouterGroup) {
