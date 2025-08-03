@@ -21,7 +21,17 @@ func main() {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 
-	db.AutoMigrate(&models.User{})
+	db.AutoMigrate(
+		&models.User{},
+		&models.Shop{},
+		&models.Product{},
+		&models.ProductImage{},
+		&models.Category{},
+		&models.Order{},
+		&models.OrderItem{},
+		&models.Review{},
+	)
+
 	// 3. Create and start the server.
 	server := api.NewServer(db)
 	if err := server.Start(":8080"); err != nil {
