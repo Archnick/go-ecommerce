@@ -14,7 +14,7 @@ type User struct {
 	LastName              string `gorm:"type:varchar(100)"`
 	Email                 string `gorm:"type:varchar(255);unique;not null"`
 	Password              string
-	ProfileImageUrl       string `gorm:"type:varchar(255)"`
+	ProfileImageURL       string `gorm:"type:varchar(255)"`
 	Role                  string `gorm:"type:varchar(20);default:'customer'"`
 	RefreshToken          string
 	RefreshTokenExpiresAt time.Time

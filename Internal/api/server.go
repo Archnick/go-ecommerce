@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/Archnick/go-ecommerce/Internal/models"
 	"github.com/gin-gonic/gin" // Import Gin
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/locales/en"
@@ -59,19 +58,23 @@ func (s *Server) Start(addr string) error {
 
 // routes sets up all the routing for the application using Gin's syntax.
 func (s *Server) routes() {
-	usersController := NewUsersController(s.db)
-	authController := NewAuthController(s.db)
-
-	// Group routes under /api
 	api := s.router.Group("/api")
-	{
-		api.POST("/register", authController.handleRegisterUser)
-		api.POST("/login", authController.handleLogin)
-		api.POST("/refresh", authController.handleRefreshToken)
+	s.getAuthRoutes(api)
+	s.getUserRoutes(api)
+}
 
-		api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
-		api.GET("/logout", AuthMiddleware(), usersController.handleLogout)
+func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
+	authController := NewAuthController(s.db)
+	api.POST("/register", authController.handleRegisterUser)
+	api.POST("/login", authController.handleLogin)
+	api.POST("/refresh", authController.handleRefreshToken)
+	api.GET("/logout", AuthMiddleware(), authController.handleLogout)
+}
 
-		api.GET("/users", AuthMiddleware(), RoleMiddleware(models.AdminRole), usersController.handleGetUsers)
-	}
+func (s *Server) getUserRoutes(api *gin.RouterGroup) {
+	usersController := NewUsersController(s.db)
+	api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
+	api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
+	api.PUT("/users/:id", AuthMiddleware(), usersController.handleUpdateUser)
+	api.DELETE("/users/:id", AuthMiddleware(), usersController.handleDeleteUser)
 }

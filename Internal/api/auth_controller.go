@@ -38,7 +38,10 @@ func (c *AuthController) handleRegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	user := models.User{Email: payload.Email, Password: string(hashedPassword)}
+	user := models.User{
+		Email:    payload.Email,
+		Password: string(hashedPassword),
+		Role:     string(models.CustomerRole)}
 	result := c.db.Create(&user)
 
 	if result.Error != nil {
@@ -161,7 +164,7 @@ func (c *AuthController) handleRefreshToken(ctx *gin.Context) {
 	})
 }
 
-func (c *UsersController) handleLogout(ctx *gin.Context) {
+func (c *AuthController) handleLogout(ctx *gin.Context) {
 	userID, exists := ctx.Get("userID")
 	if !exists {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "You are not logged in"})
