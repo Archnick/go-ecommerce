@@ -64,6 +64,7 @@ func (s *Server) routes() {
 	s.getUserRoutes(api)
 	s.getProductRoutes(api)
 	s.getCategoryRoutes(api)
+	s.getShopRoutes(api)
 }
 
 func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
@@ -101,4 +102,13 @@ func (s *Server) getCategoryRoutes(api *gin.RouterGroup) {
 	api.POST("/categories", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleCreateCategory)
 	api.PUT("/categories/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleUpdateCategory)
 	api.DELETE("/categories/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleDeleteCategory)
+}
+
+func (s *Server) getShopRoutes(api *gin.RouterGroup) {
+	shopController := NewShopController(s.db)
+	api.GET("/shops", shopController.handleGetShops)
+	api.GET("/shops/:id", shopController.handleGetShop)
+	api.POST("/shops", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleCreateShop)
+	api.PUT("/shops/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleUpdateShop)
+	api.DELETE("/shops/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleDeleteShop)
 }
