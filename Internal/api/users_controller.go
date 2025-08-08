@@ -112,12 +112,10 @@ func (c *UsersController) handleUpdateUser(ctx *gin.Context) {
 	}
 
 	if payload.Role != "" {
-		requestingUserRole, _ = ctx.Get("role")
 		if models.Role(requestingUserRole.(string)) != models.AdminRole {
 			ctx.JSON(http.StatusForbidden, gin.H{"error": "You are not authorized to modify users roles"})
 			return
 		}
-
 	}
 
 	// 3. Fetch the User from the Database

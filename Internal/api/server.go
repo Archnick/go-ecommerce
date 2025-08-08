@@ -61,6 +61,7 @@ func (s *Server) routes() {
 	api := s.router.Group("/api")
 	s.getAuthRoutes(api)
 	s.getUserRoutes(api)
+	s.getProductRoutes(api)
 }
 
 func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
@@ -77,4 +78,13 @@ func (s *Server) getUserRoutes(api *gin.RouterGroup) {
 	api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
 	api.PUT("/users/:id", AuthMiddleware(), usersController.handleUpdateUser)
 	api.DELETE("/users/:id", AuthMiddleware(), usersController.handleDeleteUser)
+}
+
+func (s *Server) getProductRoutes(api *gin.RouterGroup) {
+	productController := NewProductController(s.db)
+	api.GET("/products", productController.handleGetProducts)
+	api.GET("/products/:id", productController.handleGetProduct)
+	api.POST("/products", AuthMiddleware(), productController.handleCreateProduct)
+	api.PUT("/products/:id", AuthMiddleware(), productController.handleUpdateProduct)
+	api.DELETE("/products/:id", AuthMiddleware(), productController.handleDeleteProduct)
 }
