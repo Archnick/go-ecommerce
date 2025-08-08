@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Archnick/go-ecommerce/Internal/models"
 	"github.com/gin-gonic/gin" // Import Gin
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/locales/en"
@@ -62,6 +63,7 @@ func (s *Server) routes() {
 	s.getAuthRoutes(api)
 	s.getUserRoutes(api)
 	s.getProductRoutes(api)
+	s.getCategoryRoutes(api)
 }
 
 func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
@@ -91,4 +93,12 @@ func (s *Server) getProductRoutes(api *gin.RouterGroup) {
 	api.PUT("/products/:id", AuthMiddleware(), productController.handleUpdateProduct)
 	api.DELETE("/products/:id", AuthMiddleware(), productController.handleDeleteProduct)
 	api.DELETE("/product_images/:image_id", AuthMiddleware(), productImageController.handleDeleteProductImage)
+}
+
+func (s *Server) getCategoryRoutes(api *gin.RouterGroup) {
+	categoryController := NewCategoryController(s.db)
+	api.GET("/categories", categoryController.handleGetCategories)
+	api.POST("/categories", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleCreateCategory)
+	api.PUT("/categories/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleUpdateCategory)
+	api.DELETE("/categories/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), categoryController.handleDeleteCategory)
 }
