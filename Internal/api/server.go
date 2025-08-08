@@ -82,9 +82,13 @@ func (s *Server) getUserRoutes(api *gin.RouterGroup) {
 
 func (s *Server) getProductRoutes(api *gin.RouterGroup) {
 	productController := NewProductController(s.db)
+	productImageController := NewProductImageController(s.db)
 	api.GET("/products", productController.handleGetProducts)
 	api.GET("/products/:id", productController.handleGetProduct)
+	api.GET("/products/:product_id/images", productImageController.handleGetProductImages)
 	api.POST("/products", AuthMiddleware(), productController.handleCreateProduct)
+	api.POST("/products/:product_id/images", AuthMiddleware(), productImageController.handleCreateProductImage)
 	api.PUT("/products/:id", AuthMiddleware(), productController.handleUpdateProduct)
 	api.DELETE("/products/:id", AuthMiddleware(), productController.handleDeleteProduct)
+	api.DELETE("/product_images/:image_id", AuthMiddleware(), productImageController.handleDeleteProductImage)
 }

@@ -17,3 +17,9 @@ type UpdateProductPayload struct {
 	ShopID      uint    `json:"shop_id" binding:"omitempty"`
 	CategoryID  uint    `json:"category_id" binding:"omitempty"`
 }
+
+type ProductImagePayload struct {
+	ProductID uint   `json:"product_id" binding:"required"`
+	AltText   string `json:"alt_text" binding:"omitempty"`
+	ImageURL  string `json:"image_url" binding:"required,url"`
+}
