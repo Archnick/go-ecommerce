@@ -77,8 +77,10 @@ func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
 
 func (s *Server) getUserRoutes(api *gin.RouterGroup) {
 	usersController := NewUsersController(s.db)
+	ReviewController := NewReviewController(s.db)
 	api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
 	api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
+	api.GET("/users/:user_id/reviews", ReviewController.handleGetReviewsForUser)
 	api.PUT("/users/:id", AuthMiddleware(), usersController.handleUpdateUser)
 	api.DELETE("/users/:id", AuthMiddleware(), usersController.handleDeleteUser)
 }
@@ -86,14 +88,19 @@ func (s *Server) getUserRoutes(api *gin.RouterGroup) {
 func (s *Server) getProductRoutes(api *gin.RouterGroup) {
 	productController := NewProductController(s.db)
 	productImageController := NewProductImageController(s.db)
+	reviewController := NewReviewController(s.db)
 	api.GET("/products", productController.handleGetProducts)
 	api.GET("/products/:id", productController.handleGetProduct)
 	api.GET("/products/:product_id/images", productImageController.handleGetProductImages)
+	api.GET("/products/:product_id/reviews", reviewController.handleGetReviewsForProduct)
 	api.POST("/products", AuthMiddleware(), productController.handleCreateProduct)
 	api.POST("/products/:product_id/images", AuthMiddleware(), productImageController.handleCreateProductImage)
+	api.POST("/products/:product_id/reviews", AuthMiddleware(), reviewController.handleCreateReview)
 	api.PUT("/products/:id", AuthMiddleware(), productController.handleUpdateProduct)
 	api.DELETE("/products/:id", AuthMiddleware(), productController.handleDeleteProduct)
+
 	api.DELETE("/product_images/:image_id", AuthMiddleware(), productImageController.handleDeleteProductImage)
+	api.PUT("/reviews/:review_id", AuthMiddleware(), reviewController.handleUpdateReview)
 }
 
 func (s *Server) getCategoryRoutes(api *gin.RouterGroup) {
