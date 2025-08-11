@@ -65,6 +65,7 @@ func (s *Server) routes() {
 	s.getProductRoutes(api)
 	s.getCategoryRoutes(api)
 	s.getShopRoutes(api)
+	s.getOrderRoutes(api)
 }
 
 func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
@@ -118,4 +119,16 @@ func (s *Server) getShopRoutes(api *gin.RouterGroup) {
 	api.POST("/shops", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleCreateShop)
 	api.PUT("/shops/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleUpdateShop)
 	api.DELETE("/shops/:id", AuthMiddleware(), RoleMiddleware(models.AdminRole), shopController.handleDeleteShop)
+}
+
+func (s *Server) getOrderRoutes(api *gin.RouterGroup) {
+	orderController := NewOrderController(s.db)
+	api.GET("/orders", AuthMiddleware(), orderController.handleGetOrders)
+	api.GET("/orders/:id", AuthMiddleware(), orderController.handleGetOrder)
+	api.POST("/orders", AuthMiddleware(), orderController.handleCreateOrder)
+	api.POST("/orders/:id/items", AuthMiddleware(), orderController.handleAddItem)
+	api.PUT("/orders/:id/items/:item_id", AuthMiddleware(), orderController.handleUpdateOrderItem)
+	api.PUT("/orders/:id", AuthMiddleware(), orderController.handleUpdateOrder)
+	api.DELETE("/orders/:id", AuthMiddleware(), orderController.handleDeleteOrder)
+	api.DELETE("/orders/:id/items/:item_id", AuthMiddleware(), orderController.handleRemoveItem)
 }
