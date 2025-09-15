@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/Archnick/go-ecommerce/Internal/models"
+	"github.com/Archnick/go-ecommerce/Internal/repositories"
+	"github.com/Archnick/go-ecommerce/Internal/services"
 	"github.com/gin-gonic/gin" // Import Gin
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/locales/en"
@@ -57,7 +59,7 @@ func (s *Server) Start(addr string) error {
 	return s.router.Run(addr)
 }
 
-// routes sets up all the routing for the application using Gin's syntax.
+// routes sets up all the routing for the application using Gin.
 func (s *Server) routes() {
 	api := s.router.Group("/api")
 	s.getAuthRoutes(api)
@@ -69,7 +71,10 @@ func (s *Server) routes() {
 }
 
 func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
-	authController := NewAuthController(s.db)
+	userRepository := repositories.NewUserRepository(s.db)
+	userService := services.NewUserService(userRepository)
+	authController := NewAuthController(userService)
+
 	api.POST("/register", authController.handleRegisterUser)
 	api.POST("/login", authController.handleLogin)
 	api.POST("/refresh", authController.handleRefreshToken)
@@ -77,8 +82,11 @@ func (s *Server) getAuthRoutes(api *gin.RouterGroup) {
 }
 
 func (s *Server) getUserRoutes(api *gin.RouterGroup) {
-	usersController := NewUsersController(s.db)
-	ReviewController := NewReviewController(s.db)
+	userRepositery := repositories.NewUserRepository(s.db)
+	userService := services.NewUserService(userRepositery)
+	usersController := NewUsersController(userService)
+	ReviewController := NewReviewController(s.db) //TODO
+
 	api.GET("/users", AuthMiddleware(), usersController.handleGetUsers)
 	api.GET("/users/:id", AuthMiddleware(), usersController.handleGetUser)
 	api.GET("/users/:user_id/reviews", ReviewController.handleGetReviewsForUser)

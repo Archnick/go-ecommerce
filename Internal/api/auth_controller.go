@@ -6,19 +6,18 @@ import (
 	"time"
 
 	"github.com/Archnick/go-ecommerce/Internal/models"
+	"github.com/Archnick/go-ecommerce/Internal/services"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type AuthController struct {
-	db *gorm.DB
+	service *services.UserService
 }
 
-func NewAuthController(db *gorm.DB) *AuthController {
-	return &AuthController{db: db}
+func NewAuthController(db *services.UserService) *AuthController {
+	return &AuthController{service: db}
 }
 
 // handleRegisterUser now takes a *gin.Context.
@@ -32,20 +31,10 @@ func (c *AuthController) handleRegisterUser(ctx *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(payload.Password), bcrypt.DefaultCost)
+	user, err := c.service.RegisterUser(payload)
+
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
-	}
-
-	user := models.User{
-		Email:    payload.Email,
-		Password: string(hashedPassword),
-		Role:     string(models.CustomerRole)}
-	result := c.db.Create(&user)
-
-	if result.Error != nil {
-		if strings.Contains(result.Error.Error(), "duplicate key value violates unique constraint") {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			ctx.JSON(http.StatusConflict, gin.H{"error": "This email is already in use"})
 			return
 		}
@@ -55,7 +44,7 @@ func (c *AuthController) handleRegisterUser(ctx *gin.Context) {
 	}
 
 	// Use ctx.JSON() to send a response. gin.H is a shortcut for map[string]interface{}.
-	ctx.JSON(http.StatusCreated, gin.H{"message": "User created successfully"})
+	ctx.JSON(http.StatusCreated, gin.H{"message": "User created successfully", "user": user})
 }
 
 func (c *AuthController) handleLogin(ctx *gin.Context) {
@@ -65,16 +54,7 @@ func (c *AuthController) handleLogin(ctx *gin.Context) {
 		return
 	}
 
-	var user models.User
-	// Find the user by email
-	result := c.db.Where("email = ?", payload.Email).First(&user)
-	if result.Error != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-		return
-	}
-
-	// Compare the provided password with the stored hash
-	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(payload.Password))
+	user, err := c.service.AuthorizeUser(payload)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
@@ -93,11 +73,7 @@ func (c *AuthController) handleLogin(ctx *gin.Context) {
 		return
 	}
 
-	expiry := time.Now().Add(7 * 24 * time.Hour)
-	c.db.Model(&user).Updates(models.User{
-		RefreshToken:          string(refreshToken),
-		RefreshTokenExpiresAt: expiry,
-	})
+	c.service.SetRefreshToken(user, string(refreshToken))
 
 	ctx.JSON(http.StatusOK, gin.H{"access_token": tokenString, "refresh_token": refreshToken})
 }
@@ -124,9 +100,8 @@ func (c *AuthController) handleRefreshToken(ctx *gin.Context) {
 	}
 
 	// Fetch the specific user from the database using the ID from the token claims
-	var user models.User
-	result := c.db.First(&user, claims.UserID)
-	if result.Error != nil {
+	user, err := c.service.GetUserByID(claims.UserID)
+	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
@@ -152,11 +127,7 @@ func (c *AuthController) handleRefreshToken(ctx *gin.Context) {
 	}
 
 	// Update the database with the new refresh token.
-	newExpiry := time.Now().Add(7 * 24 * time.Hour)
-	c.db.Model(&user).Updates(models.User{
-		RefreshToken:          newRefreshToken,
-		RefreshTokenExpiresAt: newExpiry,
-	})
+	c.service.SetRefreshToken(user, newRefreshToken)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"access_token":  newAccessToken,
@@ -171,18 +142,14 @@ func (c *AuthController) handleLogout(ctx *gin.Context) {
 		return
 	}
 
-	var user models.User
 	// Find the user and clear their refresh token fields.
 	// TODO: I still need to find a solution for invalidating the Auth token
-	if err := c.db.First(&user, userID).Error; err != nil {
+	user, err := c.service.GetUserByID(userID.(uint))
+	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	c.db.Model(&user).Updates(models.User{
-		RefreshToken:          "",
-		RefreshTokenExpiresAt: time.Time{}, // Set to zero value
-	})
-
+	c.service.SetRefreshToken(user, "")
 	ctx.JSON(http.StatusOK, gin.H{"message": "Successfully logged out"})
 }

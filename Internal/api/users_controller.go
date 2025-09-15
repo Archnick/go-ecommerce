@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/Archnick/go-ecommerce/Internal/models"
+	"github.com/Archnick/go-ecommerce/Internal/services"
 	"github.com/gin-gonic/gin" // Import Gin
 	"github.com/go-playground/validator/v10"
-	"gorm.io/gorm"
 )
 
 // UsersController holds the dependencies for user-related handlers.
 type UsersController struct {
-	db *gorm.DB
+	service *services.UserService
 }
 
 type PublicUser struct {
@@ -29,17 +29,15 @@ type PublicUser struct {
 }
 
 // NewUsersController creates a new instance of the UsersController.
-func NewUsersController(db *gorm.DB) *UsersController {
-	return &UsersController{db: db}
+func NewUsersController(service *services.UserService) *UsersController {
+	return &UsersController{service: service}
 }
 
 // handleGetUsers now takes a *gin.Context.
 func (c *UsersController) handleGetUsers(ctx *gin.Context) {
-	var users []models.User
+	users, err := c.service.GetAllUsers()
 
-	result := c.db.Find(&users)
-
-	if result.Error != nil {
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users"})
 		return
 	}
@@ -62,13 +60,15 @@ func (c *UsersController) handleGetUsers(ctx *gin.Context) {
 }
 
 func (c *UsersController) handleGetUser(ctx *gin.Context) {
-	id := ctx.Param("id")
+	id, err := strconv.Atoi(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
-	var user models.User
-	result := c.db.First(&user, id)
-
-	if result.Error != nil {
-		errorMessage := fmt.Sprintf("User with the id: %s not found", id)
+	user, err := c.service.GetUserByID(uint(id))
+	if err != nil {
+		errorMessage := fmt.Sprintf("User with the id: %v not found", id)
 		ctx.JSON(http.StatusNotFound, gin.H{"error": errorMessage})
 		return
 	}
@@ -87,7 +87,7 @@ func (c *UsersController) handleGetUser(ctx *gin.Context) {
 }
 
 func (c *UsersController) handleUpdateUser(ctx *gin.Context) {
-	// 1. Authorization Check (same as handleGetUser)
+	// Authorization Check
 	requestingUserID, _ := ctx.Get("userID")
 	requestingUserRole, _ := ctx.Get("role")
 
@@ -103,7 +103,7 @@ func (c *UsersController) handleUpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	// 2. Bind and Validate the Payload
+	// Bind and Validate the Payload
 	var payload models.UpdateUserPayload
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		errs := err.(validator.ValidationErrors)
@@ -118,17 +118,16 @@ func (c *UsersController) handleUpdateUser(ctx *gin.Context) {
 		}
 	}
 
-	// 3. Fetch the User from the Database
-	var user models.User
-	if result := c.db.First(&user, targetUserID); result.Error != nil {
+	// Fetch the User from the Database
+	user, err := c.service.GetUserByID(uint(targetUserID))
+	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
 	// 4. Update the User Record
-	// GORM's Updates method will only update non-zero fields,
-	// which works perfectly with our optional payload.
-	if err := c.db.Model(&user).Updates(payload).Error; err != nil {
+	err = c.service.UpdateUser(user, payload)
+	if err != nil {
 		slog.Error("failed to update user", "error", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user"})
 		return
@@ -154,9 +153,9 @@ func (c *UsersController) handleDeleteUser(ctx *gin.Context) {
 		return
 	}
 
-	// GORM will perform a soft delete
-	if result := c.db.Delete(&models.User{}, targetUserID); result.Error != nil {
-		slog.Error("failed to delete user", "error", result.Error)
+	err = c.service.DeleteUser(uint(targetUserID))
+	if err != nil {
+		slog.Error("failed to delete user", "error", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}
